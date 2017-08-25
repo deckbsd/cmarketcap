@@ -5,6 +5,7 @@ import sys
 import time 
 import ctypes
 import threading
+import argparse
 from threading import Thread
 
 currencies = ["bitcoin", "litecoin", "gulden"]
@@ -33,12 +34,29 @@ def watch(arg, stop_event):
                 alert(currency, "Limit reached !")
                
     time.sleep(2)
+
+parser = argparse.ArgumentParser(description='Trigger alert when setuped alarm limits are reached.')
+parser.add_argument('--http-proxy', dest='http_proxy', required=False,help='Configure the http proxy')
+parser.add_argument('--https-proxy', dest='https_proxy', required=False,help='Configure the https proxy')
+
+args = parser.parse_args()
+proxies = None
+if args.http_proxy is not None:
+    proxies = { 
+        'http' : args.http_proxy,
+        'https' : args.https_proxy if args.https_proxy is not None else args.http_proxy
+    }
+
 try:
     thread_stop = threading.Event()
     thread = Thread(target = watch, args=(1, thread_stop))
     thread.start()
     while 1:
-        response = requests.get('https://api.coinmarketcap.com/v1/ticker/')
+        if proxies is not None:
+            response = requests.get('https://api.coinmarketcap.com/v1/ticker/', proxies = proxies)
+        else:
+            response = requests.get('https://api.coinmarketcap.com/v1/ticker/')
+
         assert response.status_code == 200
         os.system('cls')
         print_row ("Currency", "Market Cap", "Price", "% Changes (24h)")
